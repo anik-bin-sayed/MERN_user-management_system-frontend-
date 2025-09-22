@@ -1,0 +1,17 @@
+.animated-bg {
+  background: linear-gradient(-45deg, #34d399, #3b82f6, #9333ea, #f59e0b);
+  background-size: 400% 400%;
+  animation: gradientFlow 30s linear infinite;
+}
+
+@keyframes gradientFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
