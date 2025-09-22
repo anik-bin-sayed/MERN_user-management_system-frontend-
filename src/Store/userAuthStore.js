@@ -25,7 +25,7 @@ const useAuthStore = create((set) => ({
       );
       set({
         user: response.data.user,
-        isAuthenticated: true,
+        isAuthenticated: false,
         isLoading: false,
       });
       return response.data;

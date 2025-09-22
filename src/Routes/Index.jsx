@@ -10,6 +10,7 @@ import VerifyEmailPage from '../Pages/VerifyEmailPage';
 import useAuthStore from '../Store/userAuthStore';
 import { PrivateRoute, PublicRoute } from './../components/PrivateRoute';
 import Loader from '../components/Loader';
+import NotFoundPage from '../components/NotFoundPage';
 
 
 const Index = () => {
@@ -28,9 +29,6 @@ const Index = () => {
 
     }, [hasFetched, getUser]);
 
-    // useEffect(() => {
-    //     refreshToken();
-    // }, [refreshToken])
 
     useEffect(() => {
         const interval = setInterval(async () => {
@@ -66,7 +64,13 @@ const Index = () => {
                         <RegisterPage />
                     </PublicRoute>
                 } />
-                <Route path="/verify-email" element={<VerifyEmailPage />} />
+                <Route path="/verify-email" element={
+
+                    <VerifyEmailPage />
+
+
+                } />
+                <Route path="*" element={<NotFoundPage />} />
             </Routes>
         </Router>
     )
