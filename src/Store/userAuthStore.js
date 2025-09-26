@@ -8,7 +8,6 @@ const useAuthStore = create((set) => ({
   isLoading: false,
   error: null,
   isAuthenticated: false,
-  hasFetched: false,
   isVerified: false,
 
   register: async (name, email, password) => {
@@ -109,21 +108,34 @@ const useAuthStore = create((set) => ({
   },
 
   refreshToken: async () => {
-    set({ isAuthenticated: true, error: null });
+    set({ isCheckingAuth: true, error: null });
     try {
-      await axios.post(
+      const res = await axios.post(
         `${API_URL}/refresh-token`,
         {},
-        {
-          withCredentials: true,
-        }
+        { withCredentials: true }
       );
+
+      const { accessToken, user } = res.data;
+
+      // axios default header এ token বসাও
+      axios.defaults.headers.common["Authorization"] = `Bearer ${accessToken}`;
+
+      // zustand state আপডেট করো
       set({
+        user,
         isAuthenticated: true,
         isCheckingAuth: false,
       });
+
+      return accessToken; // future use এর জন্য return করা ভালো
     } catch (error) {
-      set({ error: null, isCheckingAuth: false, isAuthenticated: false });
+      set({
+        error: error.response?.data?.message || "Failed to refresh token",
+        isCheckingAuth: false,
+        isAuthenticated: false,
+      });
+      throw error;
     }
   },
 

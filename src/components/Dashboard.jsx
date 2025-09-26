@@ -1,22 +1,43 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import useAuthStore from '../Store/userAuthStore';
 import Loader from './Loader';
 
 const Dashboard = () => {
-    const { user, isLoading, getUser, logout } = useAuthStore();
+    const { user, isLoading, getUser, refreshToken, logout } = useAuthStore();
     const navigate = useNavigate();
+    const [loggingOut, setLoggingOut] = useState(false);
 
     useEffect(() => {
-        if (!user) {
-            getUser();
-        }
+        if (!user) getUser();
     }, [user, getUser]);
 
-    if (isLoading) return <Loader />;
+    useEffect(() => {
+        const interval = setInterval(async () => {
+            try {
+                await refreshToken();
+            } catch (err) {
+                logout();
+            }
+        }, 14 * 60 * 1000);
+        return () => clearInterval(interval);
+    }, []);
 
+    if (isLoading) return <Loader />;
     if (!user) return null;
+
+    const handleLogout = async () => {
+        setLoggingOut(true);
+        try {
+            await logout();      // wait for API call to finish
+            navigate('/');       // navigate after logout
+        } catch (err) {
+            console.error("Logout failed:", err);
+        } finally {
+            setLoggingOut(false);
+        }
+    };
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-r from-indigo-500 to-purple-600 p-4 relative overflow-hidden">
@@ -69,16 +90,19 @@ const Dashboard = () => {
                     className="flex flex-col items-center gap-2"
                 >
                     <p className="text-gray-800 font-medium">Email : {user?.email}</p>
-                    <p className="text-gray-800 font-medium">Last Login : {" "}
-                        {user?.lastLogin ? new Date(user.lastLogin).toLocaleString("en-US", {
-                            weekday: "short",   // e.g., Mon
-                            year: "numeric",    // 2025
-                            month: "short",     // Sep
-                            day: "numeric",     // 22
-                            hour: "2-digit",    // 06
-                            minute: "2-digit",  // 30
-                            hour12: true        // AM/PM format
-                        }) : "N/A"}
+                    <p className="text-gray-800 font-medium">
+                        Join Here :{" "}
+                        {user?.lastLogin
+                            ? new Date(user.lastLogin).toLocaleString("en-US", {
+                                weekday: "short",
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: true,
+                            })
+                            : "N/A"}
                     </p>
                 </motion.div>
 
@@ -92,16 +116,15 @@ const Dashboard = () => {
                     <p>From this page, you can view your personal information.</p>
                 </motion.div>
 
+                {/* Logout Button */}
                 <motion.button
+                    type="button"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => {
-                        logout();
-                        navigate('/');
-                    }}
+                    onClick={handleLogout}
                     className="mt-6 w-full bg-red-500 text-white py-2 rounded-md font-semibold shadow-md hover:bg-red-600 transition-all"
                 >
-                    Logout
+                    {loggingOut ? <Loader /> : "Logout"}
                 </motion.button>
             </motion.div>
         </div>

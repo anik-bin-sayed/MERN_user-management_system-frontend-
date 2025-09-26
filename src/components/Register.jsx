@@ -5,7 +5,7 @@ import useAuthStore from "../Store/userAuthStore";
 import Loader from "./Loader";
 
 const Register = () => {
-    const { register, error, isLoading } = useAuthStore();
+    const { register, error: serverError, isLoading } = useAuthStore();
     const navigate = useNavigate();
 
     const [formData, setFormData] = useState({
@@ -14,25 +14,77 @@ const Register = () => {
         password: "",
     });
 
+    const [errors, setErrors] = useState({});
+
+    // Email regex
+    const validateEmail = (email) => {
+        const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return regex.test(email);
+    };
+
+    // Form validation
+    const validateForm = () => {
+        let newErrors = {};
+
+        if (!formData.name.trim()) {
+            newErrors.name = "Name is required";
+        } else if (formData.name.length < 3) {
+            newErrors.name = "Name must be at least 3 characters";
+        }
+
+        if (!formData.email.trim()) {
+            newErrors.email = "Email is required";
+        } else if (!validateEmail(formData.email)) {
+            newErrors.email = "Please enter a valid email address";
+        }
+
+        if (!formData.password.trim()) {
+            newErrors.password = "Password is required";
+        } else if (formData.password.length < 6) {
+            newErrors.password = "Password must be at least 6 characters";
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData({
             ...formData,
             [name]: value,
         });
+
+        // Clear error while typing
+        setErrors({
+            ...errors,
+            [name]: "",
+        });
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        try {
-            await register(formData.name, formData.email, formData.password);
-            navigate("/verify-email");
-        } catch (err) { }
+        if (validateForm()) {
+            try {
+                await register(formData.name, formData.email, formData.password);
+                navigate("/verify-email");
+            } catch (err) { }
+        }
+    };
+
+    // 🔑 Google Login Handler
+    const handleGoogleLogin = () => {
+        window.location.href = "http://localhost:5000/api/auth/google";
+    };
+
+    // 🔑 Facebook Login Handler
+    const handleFacebookLogin = () => {
+        window.location.href = "http://localhost:5000/api/auth/facebook";
     };
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-indigo-500 to-purple-600 p-4 relative overflow-hidden">
-            {/* Floating gradient circles background */}
+            {/* Floating gradient circles */}
             <motion.div
                 initial={{ y: -20, opacity: 0 }}
                 animate={{ y: 0, opacity: 0.3 }}
@@ -53,7 +105,7 @@ const Register = () => {
                 transition={{ duration: 0.6, ease: "easeOut" }}
                 className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 relative z-10"
             >
-                {/* Avatar / Illustration */}
+                {/* Avatar */}
                 <div className="flex justify-center mb-6">
                     <motion.div
                         animate={{ y: [0, -10, 0] }}
@@ -84,11 +136,8 @@ const Register = () => {
 
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="space-y-5">
-                    <motion.div
-                        initial={{ x: -20, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        transition={{ delay: 0.2, duration: 0.4 }}
-                    >
+                    {/* Name */}
+                    <motion.div>
                         <label className="block text-gray-700 font-medium mb-1">Name</label>
                         <input
                             type="text"
@@ -96,16 +145,14 @@ const Register = () => {
                             placeholder="Enter your name"
                             value={formData.name}
                             onChange={handleChange}
-                            required
-                            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 transition"
+                            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 ${errors.name ? "border-red-500 focus:ring-red-400" : "focus:ring-indigo-400"
+                                } transition`}
                         />
+                        {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
                     </motion.div>
 
-                    <motion.div
-                        initial={{ x: -20, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        transition={{ delay: 0.3, duration: 0.4 }}
-                    >
+                    {/* Email */}
+                    <motion.div>
                         <label className="block text-gray-700 font-medium mb-1">Email</label>
                         <input
                             type="email"
@@ -113,43 +160,43 @@ const Register = () => {
                             placeholder="Enter your email"
                             value={formData.email}
                             onChange={handleChange}
-                            required
-                            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 transition"
+                            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 ${errors.email ? "border-red-500 focus:ring-red-400" : "focus:ring-indigo-400"
+                                } transition`}
                         />
+                        {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
                     </motion.div>
 
-                    <motion.div
-                        initial={{ x: -20, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        transition={{ delay: 0.4, duration: 0.4 }}
-                    >
-                        <label className="block text-gray-700 font-medium mb-1">
-                            Password
-                        </label>
+                    {/* Password */}
+                    <motion.div>
+                        <label className="block text-gray-700 font-medium mb-1">Password</label>
                         <input
                             type="password"
                             name="password"
                             placeholder="Enter your password"
                             value={formData.password}
                             onChange={handleChange}
-                            required
-                            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 transition"
+                            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 ${errors.password ? "border-red-500 focus:ring-red-400" : "focus:ring-indigo-400"
+                                } transition`}
                         />
+                        {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
                     </motion.div>
 
+                    {/* Submit button */}
                     <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         type="submit"
                         disabled={isLoading}
                         className={`w-full bg-indigo-600 text-white py-2 rounded-lg font-medium transition
-              ${isLoading ? "opacity-50 cursor-not-allowed" : "hover:bg-indigo-700"}`}
+                            ${isLoading ? "opacity-50 cursor-not-allowed" : "hover:bg-indigo-700"}
+                        `}
                     >
                         {isLoading ? <Loader /> : "Register"}
                     </motion.button>
 
-                    {error && (
-                        <p className="text-red-500 mt-2 font-medium text-center">{error}</p>
+                    {/* Server error */}
+                    {serverError && (
+                        <p className="text-red-500 mt-2 font-medium text-center">{serverError}</p>
                     )}
                 </form>
 

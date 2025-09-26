@@ -1,19 +1,45 @@
-import React, { useEffect, useState } from "react";
-import { Link } from 'react-router-dom';
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import useAuthStore from "../Store/userAuthStore";
 import Loader from "./Loader";
 
 const Login = () => {
-    const { LoginUser, error, isLoading } = useAuthStore();
+    const { LoginUser, oauthLogin, error: serverError, isLoading } = useAuthStore();
 
     const [formData, setFormData] = useState({
         email: "",
         password: "",
         remember: false,
     });
-
     const [isTypingPassword, setIsTypingPassword] = useState(false);
+    const [errors, setErrors] = useState({}); // validation error state
+
+    // Email regex
+    const validateEmail = (email) => {
+        const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return regex.test(email);
+    };
+
+    // Validation function
+    const validateForm = () => {
+        let newErrors = {};
+
+        if (!formData.email.trim()) {
+            newErrors.email = "Email is required";
+        } else if (!validateEmail(formData.email)) {
+            newErrors.email = "Please enter a valid email address";
+        }
+
+        if (!formData.password.trim()) {
+            newErrors.password = "Password is required";
+        } else if (formData.password.length < 6) {
+            newErrors.password = "Password must be at least 6 characters";
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -21,22 +47,52 @@ const Login = () => {
             ...formData,
             [name]: type === "checkbox" ? checked : value,
         });
-        if (name === "password") {
-            setIsTypingPassword(value.length > 0);
-        }
+
+        if (name === "password") setIsTypingPassword(value.length > 0);
+
+        // Real-time validation
+        setErrors({
+            ...errors,
+            [name]: "",
+        });
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        try {
+        if (validateForm()) {
             LoginUser(formData.email, formData.password);
-        } catch (error) { }
+        }
+    };
+
+    // Generic OAuth handler
+    const handleOAuthLogin = (provider) => {
+        const width = 500,
+            height = 600;
+        const left = window.innerWidth / 2 - width / 2;
+        const top = window.innerHeight / 2 - height / 2;
+
+        const authWindow = window.open(
+            `http://localhost:5000/api/auth/${provider}`,
+            "_blank",
+            `width=${width},height=${height},top=${top},left=${left}`
+        );
+
+        window.addEventListener(
+            "message",
+            function receiveToken(e) {
+                if (e.origin !== "http://localhost:5000") return;
+                const { token } = e.data;
+                if (token) oauthLogin(token, provider);
+                window.removeEventListener("message", receiveToken);
+                authWindow.close();
+            },
+            false
+        );
     };
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-indigo-500 to-purple-600 p-4">
             <div className="w-full max-w-md bg-white rounded-xl shadow-xl p-8">
-
                 {/* Avatar */}
                 <div className="flex justify-center mb-6">
                     <motion.div
@@ -45,9 +101,7 @@ const Login = () => {
                         transition={{ duration: 0.5 }}
                         className="relative w-24 h-24 rounded-full bg-gradient-to-tr from-indigo-400 to-purple-500 flex items-center justify-center shadow-lg"
                     >
-                        {/* Face */}
-                        <div className="w-16 h-16 bg-white rounded-full relative flex items-center justify-center">
-                            {/* Eyes */}
+                        <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center">
                             <div className="flex gap-4">
                                 <motion.span
                                     animate={{ scaleY: isTypingPassword ? 0.1 : 1 }}
@@ -80,9 +134,12 @@ const Login = () => {
                             placeholder="Enter your email"
                             value={formData.email}
                             onChange={handleChange}
-                            required
-                            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 ${errors.email ? "border-red-500 focus:ring-red-400" : "focus:ring-indigo-400"
+                                }`}
                         />
+                        {errors.email && (
+                            <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+                        )}
                     </div>
 
                     {/* Password */}
@@ -94,12 +151,15 @@ const Login = () => {
                             placeholder="Enter your password"
                             value={formData.password}
                             onChange={handleChange}
-                            required
-                            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 ${errors.password ? "border-red-500 focus:ring-red-400" : "focus:ring-indigo-400"
+                                }`}
                         />
+                        {errors.password && (
+                            <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+                        )}
                     </div>
 
-                    {/* Remember Me + Forgot Password */}
+                    {/* Remember me */}
                     <div className="flex items-center justify-between text-sm">
                         <label className="flex items-center gap-2">
                             <input
@@ -116,30 +176,28 @@ const Login = () => {
                         </a>
                     </div>
 
-                    {/* Submit Button */}
+                    {/* Submit button */}
                     <button
                         type="submit"
                         disabled={isLoading}
-                        className={`w-full bg-indigo-600 text-white py-2 rounded-lg font-medium transition
-              ${isLoading ? "opacity-50 cursor-not-allowed" : "hover:bg-indigo-700"}`}
+                        className={`w-full bg-indigo-600 text-white py-2 rounded-lg font-medium transition ${isLoading ? "opacity-50 cursor-not-allowed" : "hover:bg-indigo-700"
+                            }`}
                     >
                         {isLoading ? <Loader /> : "Login"}
                     </button>
 
-                    {error && (
+                    {/* Server error */}
+                    {serverError && (
                         <p className="text-red-500 text-center mt-2">
-                            {error.message || error}
+                            {serverError.message || serverError}
                         </p>
                     )}
                 </form>
 
-                {/* Footer */}
+                {/* Register link */}
                 <p className="text-center text-gray-600 text-sm mt-6">
                     Don’t have an account?{" "}
-                    <Link
-                        to="/register"
-                        className="text-indigo-600 hover:underline font-medium"
-                    >
+                    <Link to="/register" className="text-indigo-600 hover:underline font-medium">
                         Register
                     </Link>
                 </p>
